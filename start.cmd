@@ -1,0 +1,1 @@
+java.exe -cp ./bin;./libs/* cz.kamma.kfmanager.KFManager
