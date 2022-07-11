@@ -1,6 +1,7 @@
 package cz.kamma.kfmanager.util;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Enumeration;
 import java.util.Hashtable;
 
@@ -19,7 +20,7 @@ public class Images {
 	public void freeAll() {
 		if (programIcons != null) {
 			for (Enumeration<Image> it = programIcons.elements(); it.hasMoreElements();) {
-				Image image = (Image) it.nextElement();
+				Image image = it.nextElement();
 				image.dispose();
 			}
 			programIcons = null;
@@ -59,11 +60,11 @@ public class Images {
 	}
 
 	public Image getImageByResourceName(String name) {
-		return (Image) programIcons.get(name);
+		return programIcons.get(name);
 	}
 
 	public void loadAll(Display display) {
-		programIcons = new Hashtable<String, Image>();
+		programIcons = new Hashtable<>();
 
 		programIcons.put("refresh", createIconImage(display, "refresh"));
 		programIcons.put("brief", createIconImage(display, "brief"));
@@ -75,18 +76,18 @@ public class Images {
 	}
 
 	public static Image getIconForFileType(String name) {
-		return (Image) programIcons.get(name);
+		return programIcons.get(name);
 	}
 
 	public static Image getIconForFileType(Program program) {
-		Image image = (Image) programIcons.get(program);
+		Image image = programIcons.get(program);
 		if (image == null) {
 			ImageData imageData = program.getImageData();
 			if (imageData != null) {
 				image = new Image(null, imageData, imageData.getTransparencyMask());
 				programIcons.put(program.getName(), image);
 			} else {
-				image = (Image) programIcons.get("icon_file");
+				image = programIcons.get("icon_file");
 			}
 		}
 		return image;

@@ -7,11 +7,11 @@ import cz.kamma.kfmanager.preference.PreferenceManager;
 
 public class MainPreferenceDialog extends PreferenceDialog {
 
-    public MainPreferenceDialog(Shell shell, PreferenceManager manager) {
-	super(shell, manager);
-    }
+	public MainPreferenceDialog(Shell shell, PreferenceManager manager) {
+		super(shell, manager);
+	}
 
-    public void refresh() {
-	getTreeViewer().refresh();
-    }
+	public void refresh() {
+		getTreeViewer().refresh();
+	}
 }

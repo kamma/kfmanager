@@ -1,17 +1,37 @@
 package cz.kamma.kfmanager.util;
 
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStream;
 import java.text.MessageFormat;
 import java.text.NumberFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.Stack;
 import java.util.regex.PatternSyntaxException;
-import java.util.zip.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipOutputStream;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.program.Program;
-import org.eclipse.swt.widgets.*;
+import org.eclipse.swt.widgets.Combo;
+import org.eclipse.swt.widgets.Menu;
+import org.eclipse.swt.widgets.MenuItem;
+import org.eclipse.swt.widgets.MessageBox;
+import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.Table;
+import org.eclipse.swt.widgets.TableItem;
 
 import cz.kamma.kfmanager.preference.PreferenceManager;
 import cz.kamma.kfmanager.ui.dialog.ProgressDialog;
@@ -36,8 +56,7 @@ public class FileHelper extends Constants {
 	}
 
 	public static String getDiskLabel(String directory) {
-		String diskLabel = directory.substring(0,
-				directory.indexOf(PATH_SEPARATOR) + 1);
+		String diskLabel = directory.substring(0, directory.indexOf(PATH_SEPARATOR) + 1);
 		if (Arrays.binarySearch(roots, diskLabel) > -1)
 			return diskLabel;
 		else
@@ -53,8 +72,7 @@ public class FileHelper extends Constants {
 		String par = tmp.getParent();
 		if (par != null) {
 			tmp = new File(par);
-			return new FileItemVO(UPDIR_SYMBOL, tmp.getAbsolutePath(),
-					FILE_TYPE_DIR, tmp.lastModified(), 0, "");
+			return new FileItemVO(UPDIR_SYMBOL, tmp.getAbsolutePath(), FILE_TYPE_DIR, tmp.lastModified(), 0, "");
 		}
 		return null;
 	}
@@ -79,11 +97,11 @@ public class FileHelper extends Constants {
 
 	public static void setRootItems(Menu rootMenu, String[] items) {
 		MenuItem item;
-		for (int i = 0; i < items.length; i++) {
-			final String drive = items[i];
+		for (final String drive : items) {
 			item = new MenuItem(rootMenu, SWT.CASCADE);
 			item.setText(drive);
 			item.addSelectionListener(new SelectionAdapter() {
+				@Override
 				public void widgetSelected(SelectionEvent e) {
 					System.out.println("Changed to : " + drive);
 				}
@@ -92,8 +110,8 @@ public class FileHelper extends Constants {
 	}
 
 	public static void setRootItemsOld(Combo rootCombo, String[] items) {
-		for (int i = 0; i < items.length; i++) {
-			rootCombo.add(items[i]);
+		for (String item : items) {
+			rootCombo.add(item);
 		}
 	}
 
@@ -112,16 +130,14 @@ public class FileHelper extends Constants {
 
 	public static FileItemVO getFileItem(File file) {
 		return new FileItemVO(file.getName(), file.getAbsolutePath(),
-				file.isDirectory() ? FILE_TYPE_DIR : FILE_TYPE_FILE,
-				file.lastModified(), file.length(), "");
+				file.isDirectory() ? FILE_TYPE_DIR : FILE_TYPE_FILE, file.lastModified(), file.length(), "");
 	}
 
 	public static FileItemVO[] getFileItems(File[] files) {
 		FileItemVO[] res = new FileItemVO[files.length];
 		for (int i = 0; i < files.length; i++) {
-			if (files[i].isHidden()
-					&& ConfigHelper.getInstance().getPropertyAsBoolean(
-							PreferenceManager.SETTINGS_SHOW_HIDDEN_FILES, true))
+			if (files[i].isHidden() && ConfigHelper.getInstance()
+					.getPropertyAsBoolean(PreferenceManager.SETTINGS_SHOW_HIDDEN_FILES, true))
 				res[i] = getFileItem(files[i]);
 			else if (!files[i].isHidden())
 				res[i] = getFileItem(files[i]);
@@ -169,8 +185,7 @@ public class FileHelper extends Constants {
 		final String fileName = file.getAbsolutePath();
 		if (!Program.launch(fileName)) {
 			MessageBox dialog = new MessageBox(shell, SWT.ICON_ERROR | SWT.OK);
-			dialog.setMessage(MessageFormat.format("Failed to launch file.",
-					new Object[] { fileName }));
+			dialog.setMessage(MessageFormat.format("Failed to launch file.", new Object[] { fileName }));
 			dialog.setText(shell.getText());
 			dialog.open();
 		}
@@ -195,8 +210,7 @@ public class FileHelper extends Constants {
 	public static String getFileContent(String fileName) {
 		FileItemVO file = new FileItemVO(new File(fileName));
 		try {
-			DataInputStream dis = new DataInputStream(new FileInputStream(
-					file.getAbsolutePath()));
+			DataInputStream dis = new DataInputStream(new FileInputStream(file.getAbsolutePath()));
 			byte[] buf = new byte[4096];
 			StringBuffer strBuf = new StringBuffer();
 			while (dis.available() > 0) {
@@ -220,8 +234,7 @@ public class FileHelper extends Constants {
 		}
 	}
 
-	public static boolean moveFileStructure(ProgressDialog progressDialog,
-			File oldFile, File newFile, boolean sub) {
+	public static boolean moveFileStructure(ProgressDialog progressDialog, File oldFile, File newFile, boolean sub) {
 		if (oldFile == null || newFile == null)
 			return false;
 
@@ -250,11 +263,9 @@ public class FileHelper extends Constants {
 				if (progressDialog != null) {
 					progressDialog.addWorkUnits(subFiles.length);
 				}
-				for (int i = 0; i < subFiles.length; i++) {
-					File oldSubFile = subFiles[i];
+				for (File oldSubFile : subFiles) {
 					File newSubFile = new File(newFile, oldSubFile.getName());
-					if (!moveFileStructure(progressDialog, oldSubFile,
-							newSubFile, true))
+					if (!moveFileStructure(progressDialog, oldSubFile, newSubFile, true))
 						return false;
 					if (progressDialog != null) {
 						progressDialog.addProgress(1);
@@ -276,8 +287,8 @@ public class FileHelper extends Constants {
 
 	}
 
-	public static boolean copyFileStructure(ProgressDialog progressDialog,
-			FileItemVO oldFile, File newFile, boolean sub) {
+	public static boolean copyFileStructure(ProgressDialog progressDialog, FileItemVO oldFile, File newFile,
+			boolean sub) {
 		if (oldFile == null || newFile == null)
 			return false;
 
@@ -306,10 +317,9 @@ public class FileHelper extends Constants {
 				if (progressDialog != null) {
 					progressDialog.addWorkUnits(subFiles.length);
 				}
-				for (int i = 0; i < subFiles.length; i++) {
-					File newSubFile = new File(newFile, subFiles[i].getName());
-					if (!copyFileStructure(progressDialog, subFiles[i],
-							newSubFile, true))
+				for (FileItemVO subFile : subFiles) {
+					File newSubFile = new File(newFile, subFile.getName());
+					if (!copyFileStructure(progressDialog, subFile, newSubFile, true))
 						return false;
 					if (progressDialog != null) {
 						progressDialog.addProgress(1);
@@ -334,7 +344,7 @@ public class FileHelper extends Constants {
 					progressDialog.setDetailFile(oldFile.getName());
 					progressDialog.addWorkUnits(in.available());
 				}
-				
+
 				byte[] buffer = new byte[8192];
 				int count;
 				while (in.available() > 0) {
@@ -365,8 +375,7 @@ public class FileHelper extends Constants {
 		return true;
 	}
 
-	public static boolean deleteFileStructure(ProgressDialog progressDialog,
-			File fileToDelete) {
+	public static boolean deleteFileStructure(ProgressDialog progressDialog, File fileToDelete) {
 		if (fileToDelete == null)
 			return false;
 		if (fileToDelete.isDirectory()) {
@@ -381,8 +390,7 @@ public class FileHelper extends Constants {
 				if (progressDialog != null) {
 					progressDialog.addWorkUnits(subFiles.length);
 				}
-				for (int i = 0; i < subFiles.length; i++) {
-					File oldSubFile = subFiles[i];
+				for (File oldSubFile : subFiles) {
 					if (!deleteFileStructure(progressDialog, oldSubFile))
 						return false;
 					if (progressDialog != null) {
@@ -398,11 +406,9 @@ public class FileHelper extends Constants {
 
 	public static String getFileRoot(String path) {
 		try {
-			return path.substring(0, path.indexOf(PATH_SEPARATOR)
-					+ PATH_SEPARATOR.length());
+			return path.substring(0, path.indexOf(PATH_SEPARATOR) + PATH_SEPARATOR.length());
 		} catch (Exception e) {
-			System.out.println("Cannot extract FileRoot from path '" + path
-					+ "'");
+			System.out.println("Cannot extract FileRoot from path '" + path + "'");
 		}
 		return PATH_SEPARATOR;
 	}
@@ -415,8 +421,7 @@ public class FileHelper extends Constants {
 		return res;
 	}
 
-	public static boolean regExpMatch(String filename, String regExp)
-			throws PatternSyntaxException {
+	public static boolean regExpMatch(String filename, String regExp) throws PatternSyntaxException {
 		if (filename == null || regExp == null) {
 			return false;
 		}
@@ -439,12 +444,12 @@ public class FileHelper extends Constants {
 		boolean anyChars = false;
 		int textIdx = 0;
 		int wcsIdx = 0;
-		Stack<int[]> backtrack = new Stack<int[]>();
+		Stack<int[]> backtrack = new Stack<>();
 
 		// loop around a backtrack stack, to handle complex * matching
 		do {
 			if (backtrack.size() > 0) {
-				int[] array = (int[]) backtrack.pop();
+				int[] array = backtrack.pop();
 				wcsIdx = array[0];
 				textIdx = array[1];
 				anyChars = true;
@@ -514,7 +519,7 @@ public class FileHelper extends Constants {
 		}
 
 		char[] array = text.toCharArray();
-		ArrayList<String> list = new ArrayList<String>();
+		ArrayList<String> list = new ArrayList<>();
 		StringBuffer buffer = new StringBuffer();
 		for (int i = 0; i < array.length; i++) {
 			if (array[i] == '?' || array[i] == '*') {
@@ -524,8 +529,7 @@ public class FileHelper extends Constants {
 				}
 				if (array[i] == '?') {
 					list.add("?");
-				} else if (list.size() == 0
-						|| (i > 0 && list.get(list.size() - 1).equals("*") == false)) {
+				} else if (list.size() == 0 || (i > 0 && !list.get(list.size() - 1).equals("*"))) {
 					list.add("*");
 				}
 			} else {
@@ -535,7 +539,7 @@ public class FileHelper extends Constants {
 		if (buffer.length() != 0) {
 			list.add(buffer.toString());
 		}
-		return (String[]) list.toArray(new String[0]);
+		return list.toArray(new String[0]);
 	}
 
 	public static String getFileNameFromString(String name) {
@@ -546,11 +550,9 @@ public class FileHelper extends Constants {
 
 	public static String getFileNameFromZip(String name) {
 		if (name.endsWith(ZIP_PATH_SEPARATOR))
-			name = name.substring(0,
-					name.length() - ZIP_PATH_SEPARATOR.length());
+			name = name.substring(0, name.length() - ZIP_PATH_SEPARATOR.length());
 		if (name.indexOf(ZIP_PATH_SEPARATOR) > -ZIP_PATH_SEPARATOR.length())
-			return name.substring(name.lastIndexOf(ZIP_PATH_SEPARATOR)
-					+ ZIP_PATH_SEPARATOR.length());
+			return name.substring(name.lastIndexOf(ZIP_PATH_SEPARATOR) + ZIP_PATH_SEPARATOR.length());
 		return name;
 	}
 
@@ -561,11 +563,9 @@ public class FileHelper extends Constants {
 			if (!par.endsWith(ZIP_PATH_SEPARATOR))
 				par = par + ZIP_PATH_SEPARATOR;
 			par.replace(BACKSLASH_CHAR, ZIP_PATH_SEPARATOR_CHAR);
-			return new FileItemVO(UPDIR_SYMBOL, par, FILE_TYPE_DIR, 0, 0, true,
-					zipFile);
+			return new FileItemVO(UPDIR_SYMBOL, par, FILE_TYPE_DIR, 0, 0, true, zipFile);
 		}
-		return new FileItemVO(UPDIR_SYMBOL, ZIP_PATH_SEPARATOR, FILE_TYPE_DIR,
-				0, 0, true, zipFile);
+		return new FileItemVO(UPDIR_SYMBOL, ZIP_PATH_SEPARATOR, FILE_TYPE_DIR, 0, 0, true, zipFile);
 	}
 
 	public static String getZipPathFromLabel(String label) {
@@ -582,9 +582,8 @@ public class FileHelper extends Constants {
 		return tmp.exists();
 	}
 
-	public static boolean packFileStructure(ProgressDialog progressDialog,
-			FileItemVO oldFile, ZipOutputStream zipFile, String parentDir,
-			boolean sub) {
+	public static boolean packFileStructure(ProgressDialog progressDialog, FileItemVO oldFile, ZipOutputStream zipFile,
+			String parentDir, boolean sub) {
 		if (oldFile == null || zipFile == null)
 			return false;
 
@@ -595,14 +594,11 @@ public class FileHelper extends Constants {
 			if (progressDialog != null) {
 				progressDialog.setDetailFile(oldFile.getName());
 			}
-			String entryName = oldFile.getAbsolutePath().substring(
-					parentDir.length());
-			entryName = entryName.replace(BACKSLASH_CHAR,
-					ZIP_PATH_SEPARATOR_CHAR);
+			String entryName = oldFile.getAbsolutePath().substring(parentDir.length());
+			entryName = entryName.replace(BACKSLASH_CHAR, ZIP_PATH_SEPARATOR_CHAR);
 			entryName = entryName + ZIP_PATH_SEPARATOR;
 			if (entryName.startsWith(ZIP_PATH_SEPARATOR))
-				entryName = entryName.substring(ZIP_FILE_AND_PATH_SEPARATOR
-						.length());
+				entryName = entryName.substring(ZIP_FILE_AND_PATH_SEPARATOR.length());
 
 			ZipEntry ze = new ZipEntry(entryName);
 			try {
@@ -616,9 +612,8 @@ public class FileHelper extends Constants {
 				if (progressDialog != null) {
 					progressDialog.addWorkUnits(subFiles.length);
 				}
-				for (int i = 0; i < subFiles.length; i++) {
-					if (!packFileStructure(progressDialog, subFiles[i],
-							zipFile, parentDir, true))
+				for (FileItemVO subFile : subFiles) {
+					if (!packFileStructure(progressDialog, subFile, zipFile, parentDir, true))
 						return false;
 					if (progressDialog != null) {
 						progressDialog.addProgress(1);
@@ -631,13 +626,10 @@ public class FileHelper extends Constants {
 			/*
 			 * Copy a file
 			 */
-			String entryName = oldFile.getAbsolutePath().substring(
-					parentDir.length());
-			entryName = entryName.replace(BACKSLASH_CHAR,
-					ZIP_PATH_SEPARATOR_CHAR);
+			String entryName = oldFile.getAbsolutePath().substring(parentDir.length());
+			entryName = entryName.replace(BACKSLASH_CHAR, ZIP_PATH_SEPARATOR_CHAR);
 			if (entryName.startsWith(ZIP_PATH_SEPARATOR))
-				entryName = entryName.substring(ZIP_FILE_AND_PATH_SEPARATOR
-						.length());
+				entryName = entryName.substring(ZIP_FILE_AND_PATH_SEPARATOR.length());
 
 			ZipEntry ze = new ZipEntry(entryName);
 
@@ -677,8 +669,8 @@ public class FileHelper extends Constants {
 		if (name == null || name.indexOf(".") < 0)
 			return false;
 		String ext = name.substring(name.lastIndexOf('.') + 1);
-		for (int i = 0; i < ZIP_ARCHIVE_EXTENSIONS.length; i++) {
-			if (ext.equalsIgnoreCase(ZIP_ARCHIVE_EXTENSIONS[i])) {
+		for (String element : ZIP_ARCHIVE_EXTENSIONS) {
+			if (ext.equalsIgnoreCase(element)) {
 				try {
 					new ZipFile(name);
 					return true;
